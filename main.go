@@ -79,7 +79,7 @@ func handleResult(it *monitoring.TimeSeriesIterator, threshold int64, check *nag
 		}
 
 		if resp.Points[0].GetValue().GetInt64Value() > threshold {
-			check.AddResult(nagiosplugin.CRITICAL, "Failed to perform check")
+			check.AddResult(nagiosplugin.CRITICAL, "Result is greater than or equal to critical threshold")
 			break
 		}
 	}
