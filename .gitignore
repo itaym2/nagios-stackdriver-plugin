@@ -1,2 +1,3 @@
 # ignore generated binary on mac
 icinga-stackdriver-plugin
+.vscode
