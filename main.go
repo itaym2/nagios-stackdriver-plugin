@@ -26,32 +26,6 @@ type options struct {
 	threshold int
 }
 
-func getOptions() *options {
-	filter := flag.String("filter", "", "time series filter")
-	project := flag.String("project", "", "name of the google pubsub project containing the monitored resource")
-	threshold := flag.Int("threshold", -1, "alert when result in greater than or equal to this threashold")
-
-	flag.Parse()
-
-	if *filter == "" {
-		log.Fatalf("Missing filter param")
-	}
-
-	if *project == "" {
-		log.Fatalf("Missing project param")
-	}
-
-	if *threshold == -1 {
-		log.Fatalf("missing threshold param")
-	}
-
-	return &options{
-		filter:    *filter,
-		project:   *project,
-		threshold: *threshold,
-	}
-}
-
 func main() {
 	options := getOptions()
 
@@ -86,6 +60,32 @@ func main() {
 
 	it := client.ListTimeSeries(ctx, request)
 	handleResult(it, options.threshold, check)
+}
+
+func getOptions() *options {
+	filter := flag.String("filter", "", "time series filter")
+	project := flag.String("project", "", "name of the google pubsub project containing the monitored resource")
+	threshold := flag.Int("threshold", -1, "alert when result in greater than or equal to this threashold")
+
+	flag.Parse()
+
+	if *filter == "" {
+		log.Fatalf("Missing filter param")
+	}
+
+	if *project == "" {
+		log.Fatalf("Missing project param")
+	}
+
+	if *threshold == -1 {
+		log.Fatalf("missing threshold param")
+	}
+
+	return &options{
+		filter:    *filter,
+		project:   *project,
+		threshold: *threshold,
+	}
 }
 
 func handleResult(it *monitoring.TimeSeriesIterator, threshold int, check *nagiosplugin.Check) {
