@@ -20,12 +20,14 @@ const (
 	checkIntervalInMinutes = 5
 )
 
-func main() {
-	filter := flag.String("filter", "", "time series filter")
-	project := flag.String("project", "", "name of the google pubsub project containing the monitored resource")
-	threshold := flag.Int64("threshold", 0, "alert when result in greater than or equal to this threashold")
+type options struct {
+	filter    string
+	project   string
+	threshold int
+}
 
-	flag.Parse()
+func main() {
+	options := getOptions()
 
 	check := nagiosplugin.NewCheck()
 	defer check.Finish()
@@ -43,8 +45,8 @@ func main() {
 	intervalEndTime := &googlepb.Timestamp{Seconds: time.Now().Unix()}
 
 	request := &monitoringpb.ListTimeSeriesRequest{
-		Name:   fmt.Sprintf("projects/%s", *project),
-		Filter: *filter,
+		Name:   fmt.Sprintf("projects/%s", options.project),
+		Filter: options.filter,
 		Interval: &monitoringpb.TimeInterval{
 			StartTime: intervalStartTime,
 			EndTime:   intervalEndTime,
@@ -57,10 +59,36 @@ func main() {
 	}
 
 	it := client.ListTimeSeries(ctx, request)
-	handleResult(it, *threshold, check)
+	handleResult(it, options.threshold, check)
 }
 
-func handleResult(it *monitoring.TimeSeriesIterator, threshold int64, check *nagiosplugin.Check) {
+func getOptions() *options {
+	filter := flag.String("filter", "", "time series filter")
+	project := flag.String("project", "", "name of the google pubsub project containing the monitored resource")
+	threshold := flag.Int("threshold", -1, "alert when result in greater than or equal to this threashold")
+
+	flag.Parse()
+
+	if *filter == "" {
+		log.Fatalf("Missing filter param")
+	}
+
+	if *project == "" {
+		log.Fatalf("Missing project param")
+	}
+
+	if *threshold == -1 {
+		log.Fatalf("missing threshold param")
+	}
+
+	return &options{
+		filter:    *filter,
+		project:   *project,
+		threshold: *threshold,
+	}
+}
+
+func handleResult(it *monitoring.TimeSeriesIterator, threshold int, check *nagiosplugin.Check) {
 	for {
 		resp, err := it.Next()
 		if err == iterator.Done {
@@ -78,7 +106,7 @@ func handleResult(it *monitoring.TimeSeriesIterator, threshold int64, check *nag
 			log.Fatalf("Response contains more than 1 point, please refine filter and aggregation params so that only 1 point will return")
 		}
 
-		if resp.Points[0].GetValue().GetInt64Value() > threshold {
+		if resp.Points[0].GetValue().GetInt64Value() > int64(threshold) {
 			check.AddResult(nagiosplugin.CRITICAL, "Result is greater than or equal to critical threshold")
 			break
 		}
