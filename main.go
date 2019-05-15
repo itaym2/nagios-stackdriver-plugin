@@ -21,9 +21,10 @@ const (
 )
 
 type options struct {
-	filter    string
-	project   string
-	threshold int
+	filter            string
+	project           string
+	criticalThreshold int
+	warningThreshold  int
 }
 
 func main() {
@@ -59,13 +60,14 @@ func main() {
 	}
 
 	it := client.ListTimeSeries(ctx, request)
-	handleResult(it, options.threshold, check)
+	handleResult(it, options.criticalThreshold, options.warningThreshold, check)
 }
 
 func getOptions() *options {
 	filter := flag.String("filter", "", "time series filter")
 	project := flag.String("project", "", "name of the google pubsub project containing the monitored resource")
-	threshold := flag.Int("threshold", -1, "alert when result in greater than or equal to this threashold")
+	criticalThreshold := flag.Int("criticalThreshold", -1, "critical alert when result in greater than or equal to this threashold")
+	warningThreshold := flag.Int("warningThreshold", -1, "warning alert when result in greater than or equal to this threashold")
 
 	flag.Parse()
 
@@ -77,18 +79,19 @@ func getOptions() *options {
 		log.Fatalf("Missing project param")
 	}
 
-	if *threshold == -1 {
-		log.Fatalf("missing threshold param")
+	if *warningThreshold == -1 && *criticalThreshold == -1 {
+		log.Fatalf("you must provide either criticalThreshold param or warningThreshold param")
 	}
 
 	return &options{
-		filter:    *filter,
-		project:   *project,
-		threshold: *threshold,
+		filter:            *filter,
+		project:           *project,
+		criticalThreshold: *criticalThreshold,
+		warningThreshold:  *warningThreshold,
 	}
 }
 
-func handleResult(it *monitoring.TimeSeriesIterator, threshold int, check *nagiosplugin.Check) {
+func handleResult(it *monitoring.TimeSeriesIterator, criticalThreshold int, warningThreshold int, check *nagiosplugin.Check) {
 	for {
 		resp, err := it.Next()
 		if err == iterator.Done {
@@ -106,8 +109,15 @@ func handleResult(it *monitoring.TimeSeriesIterator, threshold int, check *nagio
 			log.Fatalf("Response contains more than 1 point, please refine filter and aggregation params so that only 1 point will return")
 		}
 
-		if resp.Points[0].GetValue().GetInt64Value() > int64(threshold) {
+		value := resp.Points[0].GetValue().GetInt64Value()
+
+		if value > int64(criticalThreshold) {
 			check.AddResult(nagiosplugin.CRITICAL, "Result is greater than or equal to critical threshold")
+			break
+		}
+
+		if value > int64(warningThreshold) {
+			check.AddResult(nagiosplugin.WARNING, "Result is greater than or equal to warning threshold")
 			break
 		}
 	}
