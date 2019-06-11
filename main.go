@@ -95,7 +95,7 @@ func handleResult(it *monitoring.TimeSeriesIterator, criticalThreshold int, warn
 	for {
 		resp, err := it.Next()
 		if err == iterator.Done {
-			check.AddResult(nagiosplugin.UNKNOWN, "Failed to perform check")
+			check.AddResult(nagiosplugin.UNKNOWN, "Failed to perform check, No results returned from stackdriver API")
 			break
 		}
 
@@ -111,14 +111,14 @@ func handleResult(it *monitoring.TimeSeriesIterator, criticalThreshold int, warn
 
 		value := resp.Points[0].GetValue().GetInt64Value()
 
-		if value > int64(criticalThreshold) {
-			check.AddResult(nagiosplugin.CRITICAL, "Result is greater than or equal to critical threshold")
-			break
-		}
-
 		if value > int64(warningThreshold) {
 			check.AddResult(nagiosplugin.WARNING, "Result is greater than or equal to warning threshold")
-			break
 		}
+
+		if value > int64(criticalThreshold) {
+			check.AddResult(nagiosplugin.CRITICAL, "Result is greater than or equal to critical threshold")
+		}
+
+		break
 	}
 }
