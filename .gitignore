@@ -1,4 +1,4 @@
 # ignore generated binary on mac
-icinga-stackdriver-plugin*
+nagios-stackdriver-plugin*
 .vscode
 vendor
